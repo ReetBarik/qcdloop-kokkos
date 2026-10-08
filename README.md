@@ -1,8 +1,8 @@
 <table border="0" cellspacing="0" cellpadding="0">
 <tr>
-<td valign="middle"><img src="https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/logo.png" alt="Logo QCDLoop" /></td>
+<td valign="middle"><img src="https://raw.githubusercontent.com/ReetBarik/qcdloop-kokkos/master/extra/logo.png" alt="Logo QCDLoop" /></td>
 <td width="32">&nbsp;</td>
-<td valign="middle"><img src="https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/kokkos_text.svg" alt="Kokkos" width="405" height="85" /></td>
+<td valign="middle"><img src="https://raw.githubusercontent.com/ReetBarik/qcdloop-kokkos/master/extra/kokkos_text.svg" alt="Kokkos" width="405" height="85" /></td>
 </tr>
 </table>
 
@@ -15,7 +15,7 @@ If you use these integrals in a publication, please cite [arXiv:0712.1851](http:
 ## Download
 
 ```Shell
-git clone https://github.com/ReetBarik/qcdloop.git
+git clone https://github.com/ReetBarik/qcdloop-kokkos.git
 ```
 
 ## Installation
