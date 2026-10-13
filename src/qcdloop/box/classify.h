@@ -21,6 +21,20 @@
 namespace ql
 {
 
+    // Top-level classification used by BO() itself: how many of the four
+    // internal lines carry a nonzero mass (0-4). This picks which of the
+    // five mass-count groups (B0m..B4m) a given element belongs to.
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    int classify_massive(const Kokkos::Array<TMass, 13>& xpi) {
+        int massive = 0;
+        for (size_t j = 0; j < 4; j++) {
+            if (!ql::iszero<TOutput, TMass, TScale>(ql::kAbs(xpi[j])))
+                massive += 1;
+        }
+        return massive;
+    }
+
     // massive == 0 group (B0m): index-permutation table used to bring the
     // off-shell leg(s) into canonical position before Y is built.
     KOKKOS_INLINE_FUNCTION
