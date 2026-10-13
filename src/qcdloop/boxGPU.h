@@ -10,19 +10,21 @@
 // the full BO() dispatch function. General users include this header
 // to get full dispatch across all mass counts.
 //
-// For selective compilation, include individual group headers instead:
-//   box/B0m.h  (0 internal masses: BIN0, B1-B5)
-//   box/B1m.h  (1 internal mass:   BIN1, B6-B10)
-//   box/B2m.h  (2 internal masses: BIN2, B11-B15)
-//   box/B3m.h  (3 internal masses: BIN3, B16)
-//   box/B4m.h  (4 internal masses: BIN4)
+// For selective compilation, include individual dispatch group headers
+// instead (or an individual box/leaves/*.h header for a single integral
+// known statically):
+//   box/dispatch/B0m.h  (0 internal masses: BIN0, B1-B5)
+//   box/B1m.h           (1 internal mass:   BIN1, B6-B10)
+//   box/B2m.h           (2 internal masses: BIN2, B11-B15)
+//   box/B3m.h           (3 internal masses: BIN3, B16)
+//   box/B4m.h           (4 internal masses: BIN4)
 
 #pragma once
 
 // Suppress individual pruned BO() definitions from group headers
 #define QCDLOOP_BOX_FULL_DISPATCH
 
-#include "box/B0m.h"
+#include "box/dispatch/B0m.h"
 #include "box/B1m.h"
 #include "box/B2m.h"
 #include "box/B3m.h"
