@@ -6,18 +6,19 @@
 //          Stefan Hoeche   : shoeche@fnal.gov
 //          Max Knobbe      : mknobbe@fnal.gov
 //
-// Box integrals with 4 internal masses.
-// Contains: BIN4, B4m dispatcher, pruned BO.
+// Leaf integral: box with 4 internal masses, fully general (massive == 4).
+// Pure computation on pre-built Y; no classification logic. See
+// box/dispatch/B4m.h for the caller.
 
 #pragma once
 
-#include "box_common.h"
+#include "kokkosUtils.h"
 
 
 namespace ql
 {
 
-    /*! 
+    /*!
     * Finite box with 4 non-zero masses. Formulae from \cite Denner:1991qq.
     * \param res output object res[0,1,2] the coefficients in the Laurent series, following the LoopTools implementation \cite Hahn:2006qw.
     * \param Y the modified Cayley matrix.
@@ -25,10 +26,10 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
     void BIN4(
-        const Kokkos::View<TOutput* [3]>& res, 
+        const Kokkos::View<TOutput* [3]>& res,
         const Kokkos::Array<Kokkos::Array<TMass, 4>, 4>& Y,
         const int i) {
-    
+
         TMass tmp;
         TMass M[4];
         for (int j = 0; j < 4; j++)
@@ -41,7 +42,7 @@ namespace ql
         TMass k13 = ql::Constants<TMass>::_two() * Y[0][2] / ql::kSqrt(M[0] * M[2]);
         TMass k24 = ql::Constants<TMass>::_two() * Y[1][3] / ql::kSqrt(M[1] * M[3]);
 
-        if (ql::kAbs(k13) >= ql::Constants<TMass>::_two()) { /*do nothing*/ 
+        if (ql::kAbs(k13) >= ql::Constants<TMass>::_two()) { /*do nothing*/
         } else if (ql::kAbs(k12) >= ql::Constants<TMass>::_two()) {
             // 2 <-> 3
             tmp = k12;
@@ -164,7 +165,7 @@ namespace ql
 
         res(i,0) = ql::Constants<TOutput>::_zero();
         for (int j = 0; j < 4; j++) {
-            const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] }; 
+            const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] };
             const Kokkos::Array<TScale, 2> ix_in = { ix[0][j], ix[1][j] };
             // gfx90a rejects `cond ? ptr : nullptr` as S_CSELECT_B32 from a VGPR.
             TOutput sp_b, sp_a;
@@ -235,7 +236,7 @@ namespace ql
                 ql::cLn<TOutput, TMass, TScale>(G[1], -ql::Constants<TScale>::_one()) +
                 ql::cLn<TOutput, TMass, TScale>((r23 - q24 * x[1][2]) / d, -cc);
 
-            const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]}; 
+            const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]};
             const Kokkos::Array<TScale, 2> ix_in = {ix[0][3], ix[1][3]};
             const Kokkos::Array<TOutput, 2> l_in_a = {l[0][2], l[1][2]};
             const Kokkos::Array<TOutput, 2> l_in_b = {l[0][0], l[1][0]};
@@ -252,7 +253,7 @@ namespace ql
                 l[1][j] = ql::kLog(-x[1][j]) + ql::cLn<TOutput, TMass, TScale>(TOutput(kij[j]) - ql::Constants<TOutput>::_one() / x[1][j]-x[1][j], -ql::Real(x[1][j] * b * TOutput(gamma)));
             }
 
-            const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]}; 
+            const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]};
             const Kokkos::Array<TScale, 2> ix_in = {ix[0][3], ix[1][3]};
             const Kokkos::Array<TOutput, 2> l_in_a = {l[0][2], l[1][2]};
             const Kokkos::Array<TOutput, 2> l_in_b = {l[0][0], l[1][0]};
@@ -271,105 +272,5 @@ namespace ql
 
         res(i,2) = res(i,1) = ql::Constants<TOutput>::_zero();
     }
-
-    /*!
-    * This function triggers the topologies with 4 internal masses.
-    * \param res output object res[0,1,2] the coefficients in the Laurent series
-    * \param xpi array with masses and momenta squared
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void B4m(
-        const Kokkos::View<TOutput* [3]>& res, 
-        const Kokkos::Array<TMass, 13>& xpi, 
-        const int i) {
-
-        Kokkos::Array<Kokkos::Array<TMass, 4>, 4> Y;
-
-        Y[0][0] = xpi[0];
-        Y[1][1] = xpi[1];
-        Y[2][2] = xpi[2];
-        Y[3][3] = xpi[3];
-        Y[0][1] = Y[1][0] = ql::Constants<TMass>::_half() * (xpi[0] + xpi[1] - xpi[4]);
-        Y[0][2] = Y[2][0] = ql::Constants<TMass>::_half() * (xpi[0] + xpi[2] - xpi[8]);
-        Y[0][3] = Y[3][0] = ql::Constants<TMass>::_half() * (xpi[0] + xpi[3] - xpi[7]);
-        Y[1][2] = Y[2][1] = ql::Constants<TMass>::_half() * (xpi[1] + xpi[2] - xpi[5]);
-        Y[1][3] = Y[3][1] = ql::Constants<TMass>::_half() * (xpi[1] + xpi[3] - xpi[9]);
-        Y[2][3] = Y[3][2] = ql::Constants<TMass>::_half() * (xpi[2] + xpi[3] - xpi[6]);
-
-        ql::BIN4<TOutput, TMass, TScale>(res, Y, i);
-    }
-
-#ifndef QCDLOOP_BOX_FULL_DISPATCH
-    /*!
-    * Pruned BO for massive == 4 (4 internal masses).
-    * Includes only the B4m dispatch path.
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void BO(
-        const Kokkos::View<TOutput* [3]>& res,
-        const Kokkos::View<TScale*>& mu2,
-        const Kokkos::View<TMass* [4]>& m,
-        const Kokkos::View<TScale* [6]>& p,
-        const int i) {
-        
-        const TScale scalefac = ql::Max(
-            ql::kAbs(p(i, 4)),
-            ql::Max(ql::kAbs(p(i, 5)),
-            ql::Max(ql::kAbs(p(i, 0)),
-            ql::Max(ql::kAbs(p(i, 1)),
-            ql::Max(ql::kAbs(p(i, 2)),
-            ql::kAbs(p(i, 3)))))));
-        
-        Kokkos::Array<TMass, 13> xpi;
-        xpi[0] = m(i, 0) / scalefac;
-        xpi[1] = m(i, 1) / scalefac;
-        xpi[2] = m(i, 2) / scalefac;
-        xpi[3] = m(i, 3) / scalefac;
-        xpi[4] = TMass(p(i, 0) / scalefac);
-        xpi[5] = TMass(p(i, 1) / scalefac);
-        xpi[6] = TMass(p(i, 2) / scalefac);
-        xpi[7] = TMass(p(i, 3) / scalefac);
-        xpi[8] = TMass(p(i, 4) / scalefac);
-        xpi[9] = TMass(p(i, 5) / scalefac);
-        xpi[10] = xpi[4] + xpi[5] + xpi[6] + xpi[7] - xpi[8] - xpi[9];
-        xpi[11] = -xpi[4] + xpi[5] - xpi[6] + xpi[7] + xpi[8] + xpi[9];
-        xpi[12] = xpi[4] - xpi[5] + xpi[6] - xpi[7] + xpi[8] + xpi[9];
-        
-        const TScale musq = mu2(i) / scalefac;
-        
-        int massive = 0;
-        for (size_t j = 0; j < 4; j++) {
-            if (!ql::iszero<TOutput, TMass, TScale>(ql::kAbs(xpi[j]))) 
-                massive += 1;
-        }
-        
-        const TMass y13 = xpi[0] + xpi[2] - xpi[8];
-        const TMass y24 = xpi[1] + xpi[3] - xpi[9];
-        
-        if (ql::iszero<TOutput, TMass, TScale>(y13) || 
-            ql::iszero<TOutput, TMass, TScale>(y24)) {
-            res(i, 0) = ql::Constants<TOutput>::_zero();
-            res(i, 1) = ql::Constants<TOutput>::_zero();
-            res(i, 2) = ql::Constants<TOutput>::_zero();
-            return;
-        }
-        
-        if (massive == 4) {
-            ql::B4m<TOutput, TMass, TScale>(res, xpi, i);
-        } else {
-            res(i, 0) = ql::Constants<TOutput>::_zero();
-            res(i, 1) = ql::Constants<TOutput>::_zero();
-            res(i, 2) = ql::Constants<TOutput>::_zero();
-            return;
-        }
-        
-        const TScale scalefac2 = scalefac * scalefac;
-        res(i, 0) /= scalefac2;
-        res(i, 1) /= scalefac2;
-        res(i, 2) /= scalefac2;
-    }
-#endif
 
 }
