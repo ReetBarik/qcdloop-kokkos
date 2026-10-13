@@ -169,4 +169,40 @@ namespace ql
         return ClassifyB2m{jsort1, jsort2, jsort2 - jsort1};
     }
 
+    // massive == 3 group (B3m): index-permutation table used to bring the
+    // single zero (massless) internal line into canonical position before Y
+    // is built.
+    KOKKOS_INLINE_FUNCTION
+    constexpr int swap_b3m(int i, int j) {
+        constexpr int val[13][4] = {
+            {0, 3, 2, 1},
+            {1, 0, 3, 2},
+            {2, 1, 0, 3},
+            {3, 2, 1, 0},
+            {4, 7, 6, 5},
+            {5, 4, 7, 6},
+            {6, 5, 4, 7},
+            {7, 6, 5, 4},
+            {8, 9, 8, 9},
+            {9, 8, 9, 8},
+            {10, 10, 10, 10},
+            {11, 12, 11, 12},
+            {12, 11, 12, 11},
+        };
+        return val[i][j];
+    }
+
+    // Classification for the massive == 3 (B3m) group: which leg index
+    // carries the single zero (massless) internal line. This only depends
+    // on which of xpi[0..3] is zero -- a runtime fact even though the
+    // *count* class (massive == 3) is already known to the caller.
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    int classify_mass_b3m(const Kokkos::Array<TMass, 13>& xpi) {
+        int jsort = 0;
+        for (int j = 0; j < 4; j++)
+            if (ql::iszero<TOutput, TMass, TScale>(xpi[j])) jsort = j;
+        return jsort;
+    }
+
 }
