@@ -35,7 +35,14 @@ using std::vector;
 using std::cout;
 using std::endl;
 using std::string;
+#if defined(XPMATH_BACKEND_dd) || defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+using real_t = ql::xp_real;
+using complex_t = ql::xp_complex;
+using complex = complex_t;
+#else
+using real_t = double;
 using complex = Kokkos::complex<double>;
+#endif
 
 void printDoubleBits(double x)
 {
@@ -85,6 +92,79 @@ std::string arrayToCSV(const T* arr, size_t size) {
     return ss.str();
 }
 
+#if defined(XPMATH_BACKEND_dd) || defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+// Same formatting as boxGPU_test_xp.cc's to_double/fmt_real/complexToCSV, so
+// a dd/ff/qf/tf build's CSV text is directly comparable to
+// boxGPU_test_<backend>'s own output, row for row.
+double to_double(real_t const& x) {
+#if defined(XPMATH_BACKEND_dd) || defined(XPMATH_BACKEND_ff)
+    return static_cast<double>(x.hi) + static_cast<double>(x.lo);
+#elif defined(XPMATH_BACKEND_tf)
+    return static_cast<double>(x.f0) + static_cast<double>(x.f1)
+         + static_cast<double>(x.f2);
+#elif defined(XPMATH_BACKEND_qf)
+    return static_cast<double>(x.f0) + static_cast<double>(x.f1)
+         + static_cast<double>(x.f2) + static_cast<double>(x.f3);
+#endif
+}
+
+std::string fmt_real(real_t const& x) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.16e", to_double(x));
+    return std::string(buf);
+}
+
+std::string arrayToCSV(const real_t* arr, size_t size) {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < size; ++i) {
+        if (i > 0) ss << ",";
+        ss << fmt_real(arr[i]);
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string complexToCSV(const complex_t& c) {
+    std::stringstream ss;
+    ss << "(" << fmt_real(c.real()) << "," << fmt_real(c.imag()) << ")";
+    return ss.str();
+}
+
+std::string fmt_mu2(real_t const& x) { return fmt_real(x); }
+
+static inline real_t from_limbs(DdLimbs x) {
+    return real_t(x.hi, x.lo);
+}
+
+#if defined(XPMATH_BACKEND_dd)
+real_t r(double min, double max) {
+    return from_limbs(dd_rand(min, max));
+}
+
+real_t rs(double min, double max) {
+    return from_limbs(dd_rands(min, max));
+}
+#else
+static inline real_t from_words(QuadWords x) {
+#if defined(XPMATH_BACKEND_ff)
+    return real_t(x.w0, x.w1);
+#elif defined(XPMATH_BACKEND_tf)
+    return real_t(x.w0, x.w1, x.w2);
+#elif defined(XPMATH_BACKEND_qf)
+    return real_t(x.w0, x.w1, x.w2, x.w3);
+#endif
+}
+
+real_t r(double min, double max) {
+    return from_words(qw_rand(min, max));
+}
+
+real_t rs(double min, double max) {
+    return from_words(qw_rands(min, max));
+}
+#endif
+#else
 std::string complexToCSV(const complex& c) {
     std::stringstream ss;
     char buf[64];
@@ -95,6 +175,12 @@ std::string complexToCSV(const complex& c) {
     return ss.str();
 }
 
+std::string fmt_mu2(double x) {
+    std::ostringstream ss;
+    ss << x;
+    return ss.str();
+}
+
 double r(double min, double max) {
     return dd_rand(min, max).hi;
 }
@@ -102,6 +188,7 @@ double r(double min, double max) {
 double rs(double min, double max) {
     return dd_rands(min, max).hi;
 }
+#endif
 
 //
 // ---- Shared, leaf-agnostic prep helpers (mirror what every box/dispatch/*.h
@@ -762,9 +849,9 @@ int main(int argc, char* argv[]) {
         double low = 100;
         double up  = 1000000;
 
-        Kokkos::View<double*> mu2_d("mu2", batch_size);
-        Kokkos::View<double* [4]> m_d("m", batch_size);
-        Kokkos::View<double* [6]> p_d("p", batch_size);
+        Kokkos::View<real_t*> mu2_d("mu2", batch_size);
+        Kokkos::View<real_t* [4]> m_d("m", batch_size);
+        Kokkos::View<real_t* [6]> p_d("p", batch_size);
         Kokkos::View<complex* [3]> res_d("res", batch_size);
 
         auto mu2_h = Kokkos::create_mirror_view(mu2_d);
@@ -772,9 +859,19 @@ int main(int argc, char* argv[]) {
         auto p_h = Kokkos::create_mirror_view(p_d);
         auto res_h = Kokkos::create_mirror_view(res_d);
 
+#if defined(XPMATH_BACKEND_dd)
+        for (size_t i = 0; i < batch_size; ++i) {
+            mu2_h(i) = from_limbs(dd_mu2());
+        }
+#elif defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+        for (size_t i = 0; i < batch_size; ++i) {
+            mu2_h(i) = from_words(qw_mu2());
+        }
+#else
         for (size_t i = 0; i < batch_size; ++i) {
             mu2_h(i) = dd_mu2().hi;
         }
+#endif
 
         ql::Timer tt;
         Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
@@ -788,7 +885,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(p_d, p_h); \
         tt.start(); \
         Kokkos::parallel_for("Box Integral " NAME, policy, KOKKOS_LAMBDA(const int& i) { \
-            CALLFN<complex, double, double>(res_d, mu2_d, m_d, p_d, i); \
+            CALLFN<complex, real_t, real_t>(res_d, mu2_d, m_d, p_d, i); \
         }); \
         Kokkos::fence(); \
         { \
@@ -798,11 +895,11 @@ int main(int argc, char* argv[]) {
             std::cout << NAME << "," << batch_size << "," << elapsed << std::endl; \
         } else if (mode == 1) { \
             for (size_t i = 0; i < batch_size; ++i) { \
-                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)}; \
-                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)}; \
+                real_t m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)}; \
+                real_t p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)}; \
                 std::cout << NAME << "," \
                           << (i+1) << "," \
-                          << mu2_h(i) << "," \
+                          << fmt_mu2(mu2_h(i)) << "," \
                           << arrayToCSV(m_arr, 4) << "," \
                           << arrayToCSV(p_arr, 6) << "," \
                           << complexToCSV(res_h(i, 0)) << "," \
@@ -931,7 +1028,13 @@ int main(int argc, char* argv[]) {
         RUN_SECTION("B5", call_B5)
 
         // single mass integrals. 10 is exact.
+#if defined(XPMATH_BACKEND_dd)
+        real_t m2 = from_limbs(dd_mass_10());
+#elif defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+        real_t m2 = from_words(qw_mass_10());
+#else
         double m2 = dd_mass_10().hi;
+#endif
 
         // B6
         std::srand(12345);
@@ -984,9 +1087,19 @@ int main(int argc, char* argv[]) {
         RUN_SECTION("B10", call_B10)
 
         // two mass integrals. 10 and 2500 are exact; 4.9^2 and 50^2 come from quad.
+#if defined(XPMATH_BACKEND_dd)
+        real_t m22 = from_limbs(dd_mass_4p9_sq());
+        real_t m32 = from_limbs(dd_mass_10());
+        real_t m42 = from_limbs(dd_mass_50_sq());
+#elif defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+        real_t m22 = from_words(qw_mass_4p9_sq());
+        real_t m32 = from_words(qw_mass_10());
+        real_t m42 = from_words(qw_mass_50_sq());
+#else
         double m22 = dd_mass_4p9_sq().hi;
         double m32 = dd_mass_10().hi;
         double m42 = dd_mass_50_sq().hi;
+#endif
 
         // B11
         std::srand(12345);
