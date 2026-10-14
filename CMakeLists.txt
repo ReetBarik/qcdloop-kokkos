@@ -69,6 +69,13 @@ add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test PRIVATE -w)
 
+# Direct-per-leaf-call variant of boxGPU_test: bypasses ql::BO()'s full
+# dispatch for sections that statically know their integral. See
+# examples/boxGPU_test_direct.cc for why this exists.
+add_executable(boxGPU_test_direct examples/boxGPU_test_direct.cc)
+target_link_libraries(boxGPU_test_direct PUBLIC Kokkos::kokkos)
+target_compile_options(boxGPU_test_direct PRIVATE -w)
+
 find_package(xpmath_kokkos REQUIRED)
 
 foreach(be dd ff qf tf)
@@ -114,7 +121,7 @@ set_source_files_properties("${QUAD_INPUTS_OBJ}" PROPERTIES
 foreach(be dd ff qf tf)
   target_sources(boxGPU_test_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
-foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
   target_sources(${tgt} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
 find_library(QUADMATH_LIBRARY
@@ -128,7 +135,7 @@ endif()
 foreach(be dd ff qf tf)
   target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
 endforeach()
-foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
   target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
 endforeach()
 
