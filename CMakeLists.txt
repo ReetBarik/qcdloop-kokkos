@@ -78,15 +78,40 @@ target_compile_options(boxGPU_test_direct PRIVATE -w)
 
 find_package(xpmath_kokkos REQUIRED)
 
+# xpmath prints a one-line diagnostic on a domain violation (~40 sites, e.g.
+# "DDSQRT: negative argument"), via XPMATH_PRINTF in xp/config.hpp. Inside a
+# device kernel each site costs a format-string constant and registers, and on
+# HIP it also drags in the whole hostcall machinery: the kernels acquire a
+# hidden_hostcall_buffer argument and the compiler inlines ROCm's
+# pop_free_stack CAS-with-s_sleep spin loop at every site, reachable or not.
+#
+# Measured on gfx90a (boxGPU_test_direct, dd backend), diagnostics off vs on:
+#   device code     17,113,888 B -> 15,970,728 B   (-1.14 MB, -6.7%)
+#   scratch/thread   6,208/6,512/6,688 B -> 5,984/6,240/6,416 B  (-224 B each)
+#   s_sleep / global_atomic / s_sendmsg   2716 / 4753 / 679 -> 0 / 0 / 0
+#   hidden_hostcall_buffer                     21 kernels -> 0
+#
+# This is numerically safe: xp/config.hpp:210-213 guarantees every diagnostic
+# site returns the same value with or without the print, so bit-identity with
+# the diagnostics-on build is preserved. Turn the option ON to get the
+# messages back when debugging a domain error.
+option(QCDLOOP_XPMATH_DIAGNOSTICS
+       "Keep xpmath's domain-violation printf diagnostics in device code" OFF)
+if(QCDLOOP_XPMATH_DIAGNOSTICS)
+  set(_xpmath_diag_defs "")
+else()
+  set(_xpmath_diag_defs XPMATH_ENABLE_DIAGNOSTICS=0)
+endif()
+
 foreach(be dd ff qf tf)
   add_executable(boxGPU_test_${be} examples/boxGPU_test_xp.cc)
   target_link_libraries(boxGPU_test_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
-  target_compile_definitions(boxGPU_test_${be} PRIVATE XPMATH_BACKEND_${be})
+  target_compile_definitions(boxGPU_test_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
   target_compile_options(boxGPU_test_${be} PRIVATE -w)
 
   add_executable(boxGPU_test_direct_${be} examples/boxGPU_test_direct.cc)
   target_link_libraries(boxGPU_test_direct_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
-  target_compile_definitions(boxGPU_test_direct_${be} PRIVATE XPMATH_BACKEND_${be})
+  target_compile_definitions(boxGPU_test_direct_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
   target_compile_options(boxGPU_test_direct_${be} PRIVATE -w)
 endforeach()
 
