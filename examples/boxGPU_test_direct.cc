@@ -135,11 +135,11 @@ std::string complexToCSV(const complex_t& c) {
 
 std::string fmt_mu2(real_t const& x) { return fmt_real(x); }
 
+#if defined(XPMATH_BACKEND_dd)
 static inline real_t from_limbs(DdLimbs x) {
     return real_t(x.hi, x.lo);
 }
 
-#if defined(XPMATH_BACKEND_dd)
 real_t r(double min, double max) {
     return from_limbs(dd_rand(min, max));
 }
@@ -944,7 +944,7 @@ int main(int argc, char* argv[]) {
         std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             for(int j(0); j<4; ++j) m_h(i, j) = 0.;
-            m_h(i, 0) = 10;
+            m_h(i, 0) = real_t(10.0);
             p_h(i, 0) = rs(low,up);
             p_h(i, 1) = rs(low,up);
             p_h(i, 2) = rs(low,up);
@@ -958,7 +958,7 @@ int main(int argc, char* argv[]) {
         std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             for(int j(0); j<4; ++j) m_h(i, j) = 0.;
-            m_h(i, 0) = 10; m_h(i, 1) = 10;
+            m_h(i, 0) = real_t(10.0); m_h(i, 1) = real_t(10.0);
             p_h(i, 0) = rs(low,up);
             p_h(i, 1) = rs(low,up);
             p_h(i, 2) = rs(low,up);
@@ -972,7 +972,7 @@ int main(int argc, char* argv[]) {
         std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             for(int j(0); j<4; ++j) m_h(i, j) = 0.;
-            m_h(i, 0) = 10; m_h(i, 1) = 10; m_h(i, 2) = 10;
+            m_h(i, 0) = real_t(10.0); m_h(i, 1) = real_t(10.0); m_h(i, 2) = real_t(10.0);
             p_h(i, 0) = rs(low,up);
             p_h(i, 1) = rs(low,up);
             p_h(i, 2) = rs(low,up);
@@ -986,7 +986,7 @@ int main(int argc, char* argv[]) {
         std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             for(int j(0); j<4; ++j) m_h(i, j) = 0.;
-            m_h(i, 0) = 10; m_h(i, 1) = 10; m_h(i, 2) = 10; m_h(i, 3) = 10;
+            m_h(i, 0) = real_t(10.0); m_h(i, 1) = real_t(10.0); m_h(i, 2) = real_t(10.0); m_h(i, 3) = real_t(10.0);
             p_h(i, 0) = rs(low,up);
             p_h(i, 1) = rs(low,up);
             p_h(i, 2) = rs(low,up);
