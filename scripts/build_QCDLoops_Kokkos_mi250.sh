@@ -52,7 +52,15 @@ if which mpicxx > /dev/null 2>&1; then
 fi
 
 # KOKKOS Related settings
-KOKKOS_TAG=4.7.01
+#
+# 5.1.0, not 4.7.01: the dd/ff/qf/tf xpmath box backends link
+# xpmath_kokkos (https://github.com/ReetBarik/xpmath-kokkos), which
+# requires Kokkos >= 5.1 (find_dependency(Kokkos 5.1 REQUIRED) in its
+# CMake config). Kokkos >= 5.1 itself requires C++20, so the Kokkos
+# build below uses CMAKE_CXX_STANDARD=20 -- that is Kokkos's own
+# build standard, separate from QCDLoop's, which stays C++17 (set via
+# -DCMAKE_CXX_STANDARD=17 in the QCDLoop cmake invocation further down).
+KOKKOS_TAG=5.1.0
 KOKKOS_BUILD=Release
 KOKKOS_URL=https://github.com/kokkos/kokkos.git
 KOKKOS_ENABLED=Kokkos_ENABLE_HIP
@@ -65,6 +73,14 @@ EXTRA_FLAGS=(
    -DCMAKE_CXX_FLAGS=--gcc-toolchain=/soft/compilers/gcc/13.3.0/x86_64-suse-linux
 )
 
+# xpmath_kokkos is header-only and only needs some Kokkos >= 5.1 on
+# CMAKE_PREFIX_PATH at consume time, so one install serves every
+# architecture. Point XPMATH_KOKKOS_PREFIX at it to also configure the
+# dd/ff/qf/tf box backends; leave it unset/missing for a double-only
+# build (QCDLoop's CMakeLists.txt then skips find_package(xpmath_kokkos)
+# entirely via -DQCDLOOP_ENABLE_XPMATH=OFF, set automatically below).
+XPMATH_KOKKOS_PREFIX=${XPMATH_KOKKOS_PREFIX:-$HOME/xpmath-kokkos-install}
+
 KOKKOS_SUBDIR=kokkos-$KOKKOS_TAG-$ARCH_TAG/$KOKKOS_BUILD
 
 ####################
@@ -75,7 +91,7 @@ echo "Installing Kokkos BACKEND=$KOKKOS_ENABLED ARCH=$KOKKOS_ARCH_FLAG"
 KOKKOS_CMAKE_ARGS=(
    -DCMAKE_INSTALL_PREFIX="install/$KOKKOS_SUBDIR"
    -DCMAKE_BUILD_TYPE="$KOKKOS_BUILD"
-   -DCMAKE_CXX_STANDARD=17
+   -DCMAKE_CXX_STANDARD=20
    -D$KOKKOS_ENABLED=ON
 )
 if [ "$KOKKOS_ARCH_FLAG" != "NONE" ]; then
@@ -99,9 +115,20 @@ fi
 
 cd "$TARGET_DIR/kokkos" || return 1
 KOKKOS_HOME=$PWD/install/$KOKKOS_SUBDIR
+
+if [ -f "$XPMATH_KOKKOS_PREFIX/lib64/cmake/xpmath_kokkos/xpmath_kokkosConfig.cmake" ]; then
+   QCDLOOP_ENABLE_XPMATH=ON
+   XPMATH_PREFIX_PATH_ENTRY="$XPMATH_KOKKOS_PREFIX:"
+   echo "xpmath_kokkos found at $XPMATH_KOKKOS_PREFIX -- building dd/ff/qf/tf box backends too"
+else
+   QCDLOOP_ENABLE_XPMATH=OFF
+   XPMATH_PREFIX_PATH_ENTRY=""
+   echo "xpmath_kokkos not found at $XPMATH_KOKKOS_PREFIX -- double-only build"
+fi
+
 {
    echo "export KOKKOS_HOME=$KOKKOS_HOME"
-   echo 'export CMAKE_PREFIX_PATH=$KOKKOS_HOME/lib64/cmake/Kokkos:$CMAKE_PREFIX_PATH'
+   echo "export CMAKE_PREFIX_PATH=$KOKKOS_HOME/lib64/cmake/Kokkos:${XPMATH_PREFIX_PATH_ENTRY}\$CMAKE_PREFIX_PATH"
    echo 'export CPATH=$KOKKOS_HOME/include:$CPATH'
    echo 'export PATH=$KOKKOS_HOME/bin:$PATH'
    echo 'export LD_LIBRARY_PATH=$KOKKOS_HOME/lib64:$LD_LIBRARY_PATH'
@@ -121,6 +148,7 @@ cmake -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" \
       -DCMAKE_C_COMPILER="$CC" \
       -DCMAKE_CXX_COMPILER="$CXX" \
       -DCMAKE_CXX_FLAGS="-g" \
+      -DQCDLOOP_ENABLE_XPMATH="$QCDLOOP_ENABLE_XPMATH" \
       .. &&
 make -j32
 QCDLOOP_RC=$?
