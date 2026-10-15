@@ -76,44 +76,55 @@ add_executable(boxGPU_test_direct examples/boxGPU_test_direct.cc)
 target_link_libraries(boxGPU_test_direct PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test_direct PRIVATE -w)
 
-find_package(xpmath_kokkos REQUIRED)
+# dd/ff/qf/tf box backends link the external xpmath_kokkos library
+# (https://github.com/ReetBarik/xpmath-kokkos), which needs Kokkos >= 5.1.
+# Turn this off for a plain double-only build on a Kokkos install that
+# doesn't have xpmath_kokkos on CMAKE_PREFIX_PATH -- tadpoleGPU_test,
+# bubbleGPU_test, triangleGPU_test, boxGPU_test and boxGPU_test_direct
+# never depend on it either way.
+option(QCDLOOP_ENABLE_XPMATH
+       "Build the dd/ff/qf/tf xpmath box backends (requires xpmath_kokkos on CMAKE_PREFIX_PATH)" ON)
 
-# xpmath prints a one-line diagnostic on a domain violation (~40 sites, e.g.
-# "DDSQRT: negative argument"), via XPMATH_PRINTF in xp/config.hpp. Inside a
-# device kernel each site costs a format-string constant and registers, and on
-# HIP it also drags in the whole hostcall machinery: the kernels acquire a
-# hidden_hostcall_buffer argument and the compiler inlines ROCm's
-# pop_free_stack CAS-with-s_sleep spin loop at every site, reachable or not.
-#
-# Measured on gfx90a (boxGPU_test_direct, dd backend), diagnostics off vs on:
-#   device code     17,113,888 B -> 15,970,728 B   (-1.14 MB, -6.7%)
-#   scratch/thread   6,208/6,512/6,688 B -> 5,984/6,240/6,416 B  (-224 B each)
-#   s_sleep / global_atomic / s_sendmsg   2716 / 4753 / 679 -> 0 / 0 / 0
-#   hidden_hostcall_buffer                     21 kernels -> 0
-#
-# This is numerically safe: xp/config.hpp:210-213 guarantees every diagnostic
-# site returns the same value with or without the print, so bit-identity with
-# the diagnostics-on build is preserved. Turn the option ON to get the
-# messages back when debugging a domain error.
-option(QCDLOOP_XPMATH_DIAGNOSTICS
-       "Keep xpmath's domain-violation printf diagnostics in device code" OFF)
-if(QCDLOOP_XPMATH_DIAGNOSTICS)
-  set(_xpmath_diag_defs "")
-else()
-  set(_xpmath_diag_defs XPMATH_ENABLE_DIAGNOSTICS=0)
+if(QCDLOOP_ENABLE_XPMATH)
+  find_package(xpmath_kokkos REQUIRED)
+
+  # xpmath prints a one-line diagnostic on a domain violation (~40 sites, e.g.
+  # "DDSQRT: negative argument"), via XPMATH_PRINTF in xp/config.hpp. Inside a
+  # device kernel each site costs a format-string constant and registers, and on
+  # HIP it also drags in the whole hostcall machinery: the kernels acquire a
+  # hidden_hostcall_buffer argument and the compiler inlines ROCm's
+  # pop_free_stack CAS-with-s_sleep spin loop at every site, reachable or not.
+  #
+  # Measured on gfx90a (boxGPU_test_direct, dd backend), diagnostics off vs on:
+  #   device code     17,113,888 B -> 15,970,728 B   (-1.14 MB, -6.7%)
+  #   scratch/thread   6,208/6,512/6,688 B -> 5,984/6,240/6,416 B  (-224 B each)
+  #   s_sleep / global_atomic / s_sendmsg   2716 / 4753 / 679 -> 0 / 0 / 0
+  #   hidden_hostcall_buffer                     21 kernels -> 0
+  #
+  # This is numerically safe: xp/config.hpp:210-213 guarantees every diagnostic
+  # site returns the same value with or without the print, so bit-identity with
+  # the diagnostics-on build is preserved. Turn the option ON to get the
+  # messages back when debugging a domain error.
+  option(QCDLOOP_XPMATH_DIAGNOSTICS
+         "Keep xpmath's domain-violation printf diagnostics in device code" OFF)
+  if(QCDLOOP_XPMATH_DIAGNOSTICS)
+    set(_xpmath_diag_defs "")
+  else()
+    set(_xpmath_diag_defs XPMATH_ENABLE_DIAGNOSTICS=0)
+  endif()
+
+  foreach(be dd ff qf tf)
+    add_executable(boxGPU_test_${be} examples/boxGPU_test_xp.cc)
+    target_link_libraries(boxGPU_test_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
+    target_compile_definitions(boxGPU_test_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
+    target_compile_options(boxGPU_test_${be} PRIVATE -w)
+
+    add_executable(boxGPU_test_direct_${be} examples/boxGPU_test_direct.cc)
+    target_link_libraries(boxGPU_test_direct_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
+    target_compile_definitions(boxGPU_test_direct_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
+    target_compile_options(boxGPU_test_direct_${be} PRIVATE -w)
+  endforeach()
 endif()
-
-foreach(be dd ff qf tf)
-  add_executable(boxGPU_test_${be} examples/boxGPU_test_xp.cc)
-  target_link_libraries(boxGPU_test_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
-  target_compile_definitions(boxGPU_test_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
-  target_compile_options(boxGPU_test_${be} PRIVATE -w)
-
-  add_executable(boxGPU_test_direct_${be} examples/boxGPU_test_direct.cc)
-  target_link_libraries(boxGPU_test_direct_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
-  target_compile_definitions(boxGPU_test_direct_${be} PRIVATE XPMATH_BACKEND_${be} ${_xpmath_diag_defs})
-  target_compile_options(boxGPU_test_direct_${be} PRIVATE -w)
-endforeach()
 
 # quadmath.h is host-only. Kokkos sends every C++ source of a Kokkos target
 # through nvcc_wrapper or hipcc, so this file is compiled by an explicit host
@@ -148,10 +159,12 @@ set_source_files_properties("${QUAD_INPUTS_OBJ}" PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
-foreach(be dd ff qf tf)
-  target_sources(boxGPU_test_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
-  target_sources(boxGPU_test_direct_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
-endforeach()
+if(QCDLOOP_ENABLE_XPMATH)
+  foreach(be dd ff qf tf)
+    target_sources(boxGPU_test_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
+    target_sources(boxGPU_test_direct_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
+  endforeach()
+endif()
 foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
   target_sources(${tgt} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
@@ -163,10 +176,12 @@ find_library(QUADMATH_LIBRARY
 if(NOT QUADMATH_LIBRARY)
   set(QUADMATH_LIBRARY quadmath)
 endif()
-foreach(be dd ff qf tf)
-  target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
-  target_link_libraries(boxGPU_test_direct_${be} PUBLIC "${QUADMATH_LIBRARY}")
-endforeach()
+if(QCDLOOP_ENABLE_XPMATH)
+  foreach(be dd ff qf tf)
+    target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
+    target_link_libraries(boxGPU_test_direct_${be} PUBLIC "${QUADMATH_LIBRARY}")
+  endforeach()
+endif()
 foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
   target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
 endforeach()
