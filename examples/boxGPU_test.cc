@@ -17,6 +17,7 @@
 #include "qcdloop/timer.h"
 #include "qcdloop/boxGPU.h"
 #include "quad_inputs.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::cout;
@@ -184,7 +185,7 @@ int main(int argc, char* argv[]) {
         }
 
         ql::Timer tt;
-        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+        ql::LaunchPolicy policy(0, batch_size);
 
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {

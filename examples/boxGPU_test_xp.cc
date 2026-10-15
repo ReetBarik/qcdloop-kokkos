@@ -21,6 +21,7 @@
 #include <vector>
 #include "qcdloop/timer.h"
 #include "qcdloop/boxGPU.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::cout;
@@ -158,88 +159,13 @@ real_t rs(double min, double max) {
 #endif
 
 
-// One GPU launch that occupies every compute unit stalls: the box kernel
-// spills about 10 KB per thread and its text is far larger than the
-// instruction cache. The first call times a few slice widths, keeps the
-// widest one whose points per second stay in the same ballpark, and never
-// tries a slice with a wave on every compute unit. Later integrals reuse
-// that width. Host runs launch the whole batch.
-struct DeviceGrid {
-    int wave;
-    int units;
-};
-
-DeviceGrid device_grid() {
-#if defined(KOKKOS_ENABLE_HIP)
-    hipDeviceProp_t const& prop = Kokkos::HIP::hip_device_prop();
-    return DeviceGrid{std::max(1, prop.warpSize), std::max(0, prop.multiProcessorCount)};
-#elif defined(KOKKOS_ENABLE_CUDA)
-    cudaDeviceProp const& prop = Kokkos::Cuda().cuda_device_prop();
-    return DeviceGrid{std::max(1, prop.warpSize), std::max(0, prop.multiProcessorCount)};
-#else
-    return DeviceGrid{1, 0};
-#endif
-}
-
-int& saved_launch_slice() {
-    static int slice = -1;
-    return slice;
-}
-
-template <class F>
-void launch_slice(int begin, int end, F const& f) {
-    Kokkos::parallel_for(
-        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(begin, end), f);
-    Kokkos::fence();
-}
-
 template <class F>
 double launch_box(int n, F const& f) {
     ql::Timer total;
     total.start();
     if (n <= 0) return total.stop();
-
-    int& slice = saved_launch_slice();
-    int cursor = 0;
-    if (slice < 0) {
-        DeviceGrid grid = device_grid();
-        int cap = (grid.units > 1) ? (grid.units - 1) * grid.wave : 0;
-        if (cap <= 0 || n <= grid.wave) {
-            slice = n;
-            std::cerr << "Launch slice " << slice << " covers the whole batch" << std::endl;
-            launch_slice(0, n, f);
-            return total.stop();
-        }
-        if (cap > n) cap = n;
-
-        int warm = std::min(n, grid.wave);
-        launch_slice(0, warm, f);
-        cursor = warm;
-
-        int width = grid.wave;
-        double best = 0.0;
-        while (cursor < n && width < cap) {
-            int trial = std::min(cap, width * 2);
-            if (cursor + trial > n) break;
-            ql::Timer step;
-            step.start();
-            launch_slice(cursor, cursor + trial, f);
-            double sec = step.stop();
-            double rate = trial / std::max(sec, 1e-9);
-            cursor += trial;
-            if (best > 0.0 && rate < best * 0.5) break;
-            if (rate > best) best = rate;
-            width = trial;
-        }
-        slice = width;
-        std::cerr << "Launch slice " << slice << " (device cap " << cap << ")" << std::endl;
-    }
-
-    while (cursor < n) {
-        int count = std::min(slice, n - cursor);
-        launch_slice(cursor, cursor + count, f);
-        cursor += count;
-    }
+    ql::launch_range(0, n, f);
+    Kokkos::fence();
     return total.stop();
 }
 

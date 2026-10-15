@@ -19,6 +19,7 @@
 // this is validated against (bit-for-bit, same RNG seeding).
 
 #include <Kokkos_Core.hpp>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -30,6 +31,7 @@
 #include "qcdloop/box/classify.h"
 #include "qcdloop/box/box_common.h"
 #include "quad_inputs.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::cout;
@@ -793,6 +795,13 @@ void call_BIN4(const Kokkos::View<TOutput* [3]>& res, const Kokkos::View<TScale*
     finalize<TOutput, TMass, TScale>(res, i, scalefac);
 }
 
+template <class F>
+void launch_box_direct(int n, F const& f) {
+    if (n <= 0) return;
+    ql::launch_range(0, n, f);
+    Kokkos::fence();
+}
+
 int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
@@ -831,8 +840,14 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (argc > 3) {
-            std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
+        // Optional integral name, e.g. BIN0. Empty runs the full set. Input
+        // generation still runs for every section (each reseeds srand), so a
+        // selected section produces byte-identical rows to the full run.
+        std::string only;
+        if (argc > 3) only = argv[3];
+
+        if (argc > 4) {
+            std::cout << "Usage: " << argv[0] << " <mode> [batch_size] [integral]" << std::endl;
             std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
             std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
         }
@@ -883,11 +898,11 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h); \
         Kokkos::deep_copy(m_d, m_h); \
         Kokkos::deep_copy(p_d, p_h); \
+        if (only.empty() || only == std::string(NAME)) { \
         tt.start(); \
-        Kokkos::parallel_for("Box Integral " NAME, policy, KOKKOS_LAMBDA(const int& i) { \
+        launch_box_direct(batch_size, KOKKOS_LAMBDA(const int& i) { \
             CALLFN<complex, real_t, real_t>(res_d, mu2_d, m_d, p_d, i); \
         }); \
-        Kokkos::fence(); \
         { \
         double elapsed = tt.stop(); \
         Kokkos::deep_copy(res_h, res_d); \
@@ -906,6 +921,7 @@ int main(int argc, char* argv[]) {
                           << complexToCSV(res_h(i, 1)) << "," \
                           << complexToCSV(res_h(i, 2)) << std::endl; \
             } \
+        } \
         } \
         }
 

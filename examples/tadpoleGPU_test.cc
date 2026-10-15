@@ -16,6 +16,7 @@
 #include "qcdloop/timer.h"
 #include "qcdloop/tadpoleGPU.h"
 #include "quad_inputs.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::cout;
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
           mu2_h(i) = dd_mu2().hi;
       }
 
-      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+      ql::LaunchPolicy policy(0, batch_size);
 
       // TIN0 - zero mass: TP returns all zeros
       for (size_t i(0); i<batch_size; ++i) {

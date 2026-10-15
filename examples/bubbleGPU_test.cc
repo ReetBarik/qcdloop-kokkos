@@ -16,6 +16,7 @@
 #include "qcdloop/timer.h"
 #include "qcdloop/bubbleGPU.h"
 #include "quad_inputs.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::string;
@@ -134,7 +135,7 @@ int main(int argc, char* argv[]) {
             mu2_h(i) = dd_mu2().hi;
         }
 
-        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+        ql::LaunchPolicy policy(0, batch_size);
 
         // Trigger BIN0 - BIN2: sweep over number of internal masses
         // BIN0: both masses zero, random s  → BB3: I(s; 0, 0)

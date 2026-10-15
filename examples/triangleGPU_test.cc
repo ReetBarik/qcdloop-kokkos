@@ -16,6 +16,7 @@
 #include "qcdloop/timer.h"
 #include "qcdloop/triangleGPU.h"
 #include "quad_inputs.h"
+#include "ql_launch.h"
 
 using std::vector;
 using std::cout;
@@ -134,7 +135,7 @@ int main(int argc, char* argv[]) {
             mu2_h(i) = dd_mu2().hi;
         }
 
-        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+        ql::LaunchPolicy policy(0, batch_size);
 
         // Mass values used across test cases
         double m2  = dd_mass_10().hi;
