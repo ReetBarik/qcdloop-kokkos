@@ -185,7 +185,6 @@ int main(int argc, char* argv[]) {
         }
 
         ql::Timer tt;
-        ql::LaunchPolicy policy(0, batch_size);
 
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
@@ -214,7 +213,7 @@ int main(int argc, char* argv[]) {
             
             // Launch parallel_for with timing
             tt.start();
-            Kokkos::parallel_for("Box Integral BIN", policy, KOKKOS_LAMBDA(const int& i) {
+            ql::launch_range("Box Integral BIN", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
                 ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
             });
             Kokkos::fence();
@@ -253,7 +252,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B1", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B1", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -283,7 +282,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B2", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B2", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -313,7 +312,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B3", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B3", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -344,7 +343,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B4", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B4", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -375,7 +374,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B5", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B5", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -409,7 +408,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B6", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B6", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -440,7 +439,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B7", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B7", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -471,7 +470,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B8", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B8", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -502,7 +501,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B9", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B9", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -533,7 +532,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B10", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B10", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -569,7 +568,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B11", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B11", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -600,7 +599,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B12", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B12", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -631,7 +630,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B13", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B13", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -662,7 +661,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B14", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B14", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -693,7 +692,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B15", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B15", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -724,7 +723,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Box Integral B16", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Box Integral B16", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();

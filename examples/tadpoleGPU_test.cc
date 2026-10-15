@@ -127,7 +127,6 @@ int main(int argc, char* argv[]) {
           mu2_h(i) = dd_mu2().hi;
       }
 
-      ql::LaunchPolicy policy(0, batch_size);
 
       // TIN0 - zero mass: TP returns all zeros
       for (size_t i(0); i<batch_size; ++i) {
@@ -136,7 +135,7 @@ int main(int argc, char* argv[]) {
       Kokkos::deep_copy(mu2_d, mu2_h);
       Kokkos::deep_copy(m_d, m_h);
       tt.start();
-      Kokkos::parallel_for("Tadpole TIN0", policy, KOKKOS_LAMBDA(const int& i) {
+      ql::launch_range("Tadpole TIN0", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
           ql::TP<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
       });
       Kokkos::fence();
@@ -164,7 +163,7 @@ int main(int argc, char* argv[]) {
       Kokkos::deep_copy(mu2_d, mu2_h);
       Kokkos::deep_copy(m_d, m_h);
       tt.start();
-      Kokkos::parallel_for("Tadpole TIN1", policy, KOKKOS_LAMBDA(const int& i) {
+      ql::launch_range("Tadpole TIN1", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
           ql::TP<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
       });
       Kokkos::fence();

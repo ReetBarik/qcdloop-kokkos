@@ -135,7 +135,6 @@ int main(int argc, char* argv[]) {
             mu2_h(i) = dd_mu2().hi;
         }
 
-        ql::LaunchPolicy policy(0, batch_size);
 
         // Mass values used across test cases
         double m2  = dd_mass_10().hi;
@@ -164,7 +163,7 @@ int main(int argc, char* argv[]) {
             Kokkos::deep_copy(m_d, m_h);
             Kokkos::deep_copy(p_d, p_h);
             tt.start();
-            Kokkos::parallel_for("Triangle TIN", policy, KOKKOS_LAMBDA(const int& i) {
+            ql::launch_range("Triangle TIN", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
                 ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
             });
             Kokkos::fence();
@@ -200,7 +199,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T1", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T1", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -234,7 +233,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T2", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T2", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -269,7 +268,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T3", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T3", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -305,7 +304,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T4a", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T4a", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -341,7 +340,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T4b", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T4b", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -377,7 +376,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T5", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T5", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -412,7 +411,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Triangle T6", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Triangle T6", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::TR<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();

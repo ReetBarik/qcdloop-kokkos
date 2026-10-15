@@ -135,7 +135,6 @@ int main(int argc, char* argv[]) {
             mu2_h(i) = dd_mu2().hi;
         }
 
-        ql::LaunchPolicy policy(0, batch_size);
 
         // Trigger BIN0 - BIN2: sweep over number of internal masses
         // BIN0: both masses zero, random s  → BB3: I(s; 0, 0)
@@ -157,7 +156,7 @@ int main(int argc, char* argv[]) {
             Kokkos::deep_copy(m_d, m_h);
             Kokkos::deep_copy(p_d, p_h);
             tt.start();
-            Kokkos::parallel_for("Bubble BIN", policy, KOKKOS_LAMBDA(const int& i) {
+            ql::launch_range("Bubble BIN", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
                 ql::BB<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
             });
             Kokkos::fence();
@@ -194,7 +193,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Bubble BB1", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Bubble BB1", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BB<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -227,7 +226,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Bubble BB2", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Bubble BB2", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BB<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
@@ -260,7 +259,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
         tt.start();
-        Kokkos::parallel_for("Bubble BB5", policy, KOKKOS_LAMBDA(const int& i) {
+        ql::launch_range("Bubble BB5", 0, batch_size, KOKKOS_LAMBDA(const int& i) {
             ql::BB<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
         Kokkos::fence();
