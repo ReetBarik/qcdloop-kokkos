@@ -20,21 +20,42 @@ git clone https://github.com/ReetBarik/qcdloop-kokkos.git
 
 ## Installation
 
-The build needs C++17, a Kokkos installation on `CMAKE_PREFIX_PATH`, and `libquadmath`. It produces four drivers and does not install a library:
+The build needs C++17, a Kokkos installation on `CMAKE_PREFIX_PATH`, and `libquadmath`. It always produces five double-precision drivers and does not install a library:
 
 - `tadpoleGPU_test`
 - `bubbleGPU_test`
 - `triangleGPU_test`
 - `boxGPU_test`
+- `boxGPU_test_direct`
+
+By default it also builds the four extended-precision box drivers described
+below, which additionally need `xpmath_kokkos`
+(<https://github.com/ReetBarik/xpmath-kokkos>) on `CMAKE_PREFIX_PATH` and a
+Kokkos install `>= 5.1` (`xpmath_kokkos` itself requires it). For a
+double-only build against an older Kokkos, or without `xpmath_kokkos`
+installed, pass `-DQCDLOOP_ENABLE_XPMATH=OFF`: the five drivers above build
+with zero dependency on `xpmath_kokkos` either way.
 
 ```Shell
-cmake -S . -B build -DCMAKE_CXX_STANDARD=17 -DCMAKE_PREFIX_PATH=/path/to/kokkos
+# double-only, any Kokkos version, no xpmath_kokkos needed
+cmake -S . -B build -DCMAKE_CXX_STANDARD=17 -DCMAKE_PREFIX_PATH=/path/to/kokkos \
+      -DQCDLOOP_ENABLE_XPMATH=OFF
+cmake --build build -j
+
+# default: also builds the dd/ff/qf/tf box drivers, needs Kokkos >= 5.1
+cmake -S . -B build -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_PREFIX_PATH="/path/to/kokkos;/path/to/xpmath-kokkos-install"
 cmake --build build -j
 ```
 
 When the Kokkos compiler is `hipcc` or `nvcc`, set `DD_HOST_CXX` to a host `g++` before configuring. `examples/quad_inputs.cc` includes `quadmath.h`, which those compilers reject, so CMake compiles that file with the host compiler and links the object in.
 
-On [JLSE](https://www.jlse.anl.gov) the `scripts/prepare_*.sh` and `scripts/build_QCDLoops_Kokkos_*.sh` pairs load the modules and build both Kokkos and these drivers. Source the prepare script, then the matching build script. Binaries land in `build_<arch>/`.
+On [JLSE](https://www.jlse.anl.gov) the `scripts/prepare_*.sh` and `scripts/build_QCDLoops_Kokkos_*.sh` pairs load the modules and build both Kokkos (pinned to 5.1.0, so the xpmath drivers below are always available alongside the double ones) and these drivers. Source the prepare script, then the matching build script. Binaries land in `build_<arch>/`.
+
+Each build script looks for an `xpmath_kokkos` install at
+`$XPMATH_KOKKOS_PREFIX` (default `$HOME/xpmath-kokkos-install`) and passes
+`-DQCDLOOP_ENABLE_XPMATH=ON` automatically when it finds one, `OFF`
+otherwise — nothing to set by hand either way.
 
 | Machine | Prepare | Build | Binaries |
 |---|---|---|---|
@@ -58,7 +79,7 @@ In accuracy mode, each coefficient is a decimal complex pair (`%.16e`).
 
 ## Extended precision
 
-This branch also builds four box drivers on the same integral, one precision each. Configure needs `xpmath_kokkos` on `CMAKE_PREFIX_PATH` in addition to Kokkos.
+This branch also builds four box drivers on the same integral, one precision each. By default, configure needs `xpmath_kokkos` on `CMAKE_PREFIX_PATH` in addition to Kokkos (`>= 5.1`); pass `-DQCDLOOP_ENABLE_XPMATH=OFF` to skip them (see Installation above).
 
 - `boxGPU_test_ff` — FloatFloat
 - `boxGPU_test_tf` — TripleFloat
@@ -71,7 +92,7 @@ They read the same quad kinematics as the double drivers. DoubleDouble keeps bot
 ./build/boxGPU_test_<precision> <mode> [batch_size] [integral]
 ```
 
-`<precision>` is `ff`, `tf`, `qf`, or `dd`. `integral` is optional. On a GPU these four binaries split the batch so the launch does not occupy every compute unit.
+`<precision>` is `ff`, `tf`, `qf`, or `dd`. `integral` is optional. Each binary launches the whole batch in a single Kokkos `parallel_for` with explicit `LaunchBounds<256,1>` (`examples/ql_launch.h`) — a wider, default-bounds launch can pick an unschedulable workgroup size on some GPUs and hang. There is no batch-splitting at this level.
 
 ## Contact
 
