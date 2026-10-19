@@ -14,10 +14,17 @@
 #pragma once
 
 #include "kokkosUtils.h"
+#include "box/leaves/_lnrat_cuda_fix.h"
 
 
 namespace ql
 {
+
+    // A100 (sm_80) nvcc/ptxas silently corrupts TripleFloat results here
+    // once ql::BO()'s full dispatch kernel is compiled in -- see
+    // box/leaves/_lnrat_cuda_fix.h for the full root-cause writeup.
+    // ql::lnrat_fix + volatile_roundtrip_fix are no-ops on every backend
+    // except CUDA device code.
 
     /*!
     * The integral is defined as:
@@ -56,8 +63,8 @@ namespace ql
         if (ql::kAbs(r) < ql::Constants<TScale>::_eps() && landau == false) {
             // Expanded case
             const TOutput fac = ql::Constants<TOutput>::_one() / (si * ta);
-            const TOutput ln_si_mu2 = ql::Lnrat<TOutput, TMass, TScale>(si, mu2);
-            const TOutput ln_ta_mp4 = ql::Lnrat<TOutput, TMass, TScale>(ta, mp4sq);
+            const TOutput ln_si_mu2 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(si, mu2));
+            const TOutput ln_ta_mp4 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(ta, mp4sq));
             const TOutput l0_mp4_ta = ql::L0<TOutput, TMass, TScale>(mp4sq, ta);
             const TOutput l0_mp4_si = ql::L0<TOutput, TMass, TScale>(mp4sq, si);
             const TOutput l1_mp4_ta = ql::L1<TOutput, TMass, TScale>(mp4sq, ta);
@@ -70,19 +77,21 @@ namespace ql
         } else {
             // General case
             const TOutput fac = ql::Constants<TOutput>::_one() / (si * ta - mp2sq * mp4sq);
-            const TOutput ln_mp2_mu2 = ql::Lnrat<TOutput, TMass, TScale>(mp2sq, mu2);
-            const TOutput ln_mp4_mu2 = ql::Lnrat<TOutput, TMass, TScale>(mp4sq, mu2);
-            const TOutput ln_si_mu2 = ql::Lnrat<TOutput, TMass, TScale>(si, mu2);
-            const TOutput ln_ta_mu2 = ql::Lnrat<TOutput, TMass, TScale>(ta, mu2);
-            const TOutput ln_s_t = ql::Lnrat<TOutput, TMass, TScale>(si, ta);
+            const TOutput ln_mp2_mu2 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(mp2sq, mu2));
+            const TOutput ln_mp4_mu2 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(mp4sq, mu2));
+            const TOutput ln_si_mu2 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(si, mu2));
+            const TOutput ln_ta_mu2 = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(ta, mu2));
+            const TOutput ln_s_t = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(si, ta));
             const TOutput li2_1 = ql::Li2omrat<TOutput, TMass, TScale>(mp2sq, si);
             const TOutput li2_2 = ql::Li2omrat<TOutput, TMass, TScale>(mp2sq, ta);
             const TOutput li2_3 = ql::Li2omrat<TOutput, TMass, TScale>(mp4sq, si);
             const TOutput li2_4 = ql::Li2omrat<TOutput, TMass, TScale>(mp4sq, ta);
             const TOutput li2_5 = ql::Li2omx2<TOutput, TMass, TScale>(mp2sq, mp4sq, si, ta);
+            const TOutput ln_mp2_si = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(mp2sq, si));
+            const TOutput ln_mp4_ta = ql::volatile_roundtrip_fix(ql::lnrat_fix<TOutput, TMass, TScale>(mp4sq, ta));
 
             res(i,2) = ql::Constants<TOutput>::_zero();
-            res(i,1) = fac * ql::Constants<TOutput>::_two() * (ql::Lnrat<TOutput, TMass, TScale>(mp2sq, si) + ql::Lnrat<TOutput, TMass, TScale>(mp4sq, ta));
+            res(i,1) = fac * ql::Constants<TOutput>::_two() * (ln_mp2_si + ln_mp4_ta);
             res(i,0) = fac * (ln_si_mu2 * ln_si_mu2 + ln_ta_mu2 * ln_ta_mu2
                         - ln_mp2_mu2 * ln_mp2_mu2 - ln_mp4_mu2 * ln_mp4_mu2
                         + ql::Constants<TOutput>::_two() * (li2_5 - li2_1 - li2_2 - li2_3 - li2_4 - ql::Constants<TOutput>::_half() * ln_s_t * ln_s_t));
