@@ -168,21 +168,28 @@ endif()
 foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
   target_sources(${tgt} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
-find_library(QUADMATH_LIBRARY
-  NAMES libquadmath.so quadmath
-  PATHS /soft/compilers/gcc/13.3.0/x86_64-suse-linux/lib64
-  NO_DEFAULT_PATH
-)
-if(NOT QUADMATH_LIBRARY)
-  set(QUADMATH_LIBRARY quadmath)
-endif()
-if(QCDLOOP_ENABLE_XPMATH)
-  foreach(be dd ff qf tf)
-    target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
-    target_link_libraries(boxGPU_test_direct_${be} PUBLIC "${QUADMATH_LIBRARY}")
+# libquadmath (and __float128 itself) doesn't exist on aarch64 -- see the
+# comment in examples/quad_inputs.cc. There, quad_inputs.o uses `long
+# double` instead on aarch64 and needs no extra library, so skip this
+# entirely on that architecture rather than searching for something that
+# can't be found.
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  find_library(QUADMATH_LIBRARY
+    NAMES libquadmath.so quadmath
+    PATHS /soft/compilers/gcc/13.3.0/x86_64-suse-linux/lib64
+    NO_DEFAULT_PATH
+  )
+  if(NOT QUADMATH_LIBRARY)
+    set(QUADMATH_LIBRARY quadmath)
+  endif()
+  if(QCDLOOP_ENABLE_XPMATH)
+    foreach(be dd ff qf tf)
+      target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
+      target_link_libraries(boxGPU_test_direct_${be} PUBLIC "${QUADMATH_LIBRARY}")
+    endforeach()
+  endif()
+  foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
+    target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
   endforeach()
 endif()
-foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test boxGPU_test_direct)
-  target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
-endforeach()
 
